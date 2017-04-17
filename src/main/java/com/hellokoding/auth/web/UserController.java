@@ -1,10 +1,12 @@
 package com.hellokoding.auth.web;
 
+import com.hellokoding.auth.model.HelloMessage;
 import com.hellokoding.auth.model.User;
 import com.hellokoding.auth.service.SecurityService;
 import com.hellokoding.auth.service.UserService;
 import com.hellokoding.auth.validator.UserValidator;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -23,10 +25,12 @@ public class UserController {
     @Autowired
     private UserValidator userValidator;
 
+    @Autowired private SimpMessageSendingOperations messagingTemplate;
+
+
     @RequestMapping(value = "/registration", method = RequestMethod.GET)
     public String registration(Model model) {
         model.addAttribute("userForm", new User());
-
         return "registration";
     }
 
@@ -56,8 +60,43 @@ public class UserController {
         return "login";
     }
 
-    @RequestMapping(value = {"/", "/welcome"}, method = RequestMethod.GET)
+    @RequestMapping(value = {"/welcome"}, method = RequestMethod.GET)
     public String welcome(Model model) {
+        HelloMessage helloMessage = new HelloMessage();
+        helloMessage.setName("Beleza magrão!!");
+        messagingTemplate.convertAndSendToUser("wolmir@viasoft.com.br", "/queue/message", helloMessage);
         return "welcome";
+    }
+
+    @RequestMapping(value = {"/"}, method = RequestMethod.GET)
+    public String web(Model model) {
+        return "web";
+    }
+
+
+
+
+
+    @RequestMapping(value = "/emailregister", method = RequestMethod.GET)
+    public String emailRegister(Model model) {
+        model.addAttribute("userForm", new User());
+        return "emailRegister";
+    }
+
+    @RequestMapping(value = "/emailregister", method = RequestMethod.POST)
+    public String register(@ModelAttribute("userForm") User userForm, BindingResult bindingResult, Model model) {
+        /*userValidator.validate(userForm, bindingResult);
+
+        if (bindingResult.hasErrors()) {
+            return "registration";
+        }*/
+
+        userForm.setPassword("12345678");
+        userForm.setPasswordConfirm("12345678");
+        userService.save(userForm);
+
+        securityService.autologin(userForm.getUsername(), userForm.getPasswordConfirm());
+
+        return "redirect:/web";
     }
 }
